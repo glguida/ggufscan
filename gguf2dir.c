@@ -64,39 +64,6 @@ gguf_scan_string(void *ptr, uint64_t *len, char **string)
 }
 
 void *
-create_array(void *ptr, char *key, uint64_t keylen)
-{
-	int r;
-	char * dir;
-	uint32_t type;
-	uint64_t len;
-
-	if (asprintf((char ** restrict)&dir, "%.*s", (int)keylen, key) != 0) {
-		perror("asprintf");
-		exit(EXIT_FAILURE);
-	}
-
-	ptr = gguf_scan_uint32(ptr, &type);
-	ptr = gguf_scan_uint64(ptr, &len);
-
-	if (mkdir(dir, 0755) != 0) {
-		perror("mkdir");
-		exit(EXIT_FAILURE);
-	}
-
-	if (chdir(dir) != 0) {
-		perror("chdir");
-		exit(EXIT_FAILURE);
-	}
-
-	switch (type)
-	{
-		
-
-	}
-}
-
-void *
 gguf_scan_metadata_value(void *ptr, char *key, uint64_t keylen, uint32_t type)
 {
 	gguf_metadata_value_t v;
@@ -107,7 +74,7 @@ gguf_scan_metadata_value(void *ptr, char *key, uint64_t keylen, uint32_t type)
 		create_key_value_uint8(key, keylen, v.uint8);
 		break;
 	case GGUF_MVT_INT8:
-		ptr = gguf_scan_uint8(ptr, &v.int8);
+		ptr = gguf_scan_int8(ptr, &v.int8);
 		create_key_value_int8(key, keylen, v.int8);
 		break;
 	case GGUF_MVT_UINT16:

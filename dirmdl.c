@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdarg.h>
+#include <unistd.h>
+#include <sys/stat.h>
 #include <stdbool.h>
 
 static FILE *curkey = NULL;
@@ -91,6 +93,7 @@ int end_array(void)
 		perror("chdir");
 		exit(EXIT_FAILURE);
 	}
+	return 0;
 }
 
 
@@ -103,6 +106,7 @@ int end_array(void)
 		if (add_data(FORMAT, value) != 0)			\
 			return -1;					\
 		end_key();						\
+		return 0;						\
 	}
 
 CREATE_KEY_FUNC(uint8_t, "%u\n", uint8);
@@ -126,6 +130,7 @@ int create_key_value_string(char *key, uint64_t keylen, char *str, uint64_t strl
 	if (add_data("%.*s\n", (int)strlength, str) != 0)
 		return -1;
 	end_key();
+	return 0;
 }
 
 /*
