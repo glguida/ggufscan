@@ -20,8 +20,18 @@ DEFINE_CREATE_KEY_FUNC(bool,   "%d", bool);
 
 int create_key_value_string(char *key, uint64_t keylength, char *str, uint64_t strlength);
 
-void create_array_key(char *key, uint64_t keylen);
-void end_array(void);
+int create_array_key(char *key, uint64_t keylen);
+int end_array(void);
+
+int start_metadata(void);
+int end_metadata(void);
+
+int start_tensors(void);
+int end_tensors(void);
+
+int create_tensor(char *name, uint64_t namelen,
+		  uint64_t *dims, uint64_t ndims,
+		  uint32_t ggmltype, void *data);
 
 #endif
 

@@ -14,6 +14,12 @@
 uint64_t n_tens;
 uint64_t n_meta;
 
+/*
+  TODO: 'general.alignment' in the metadata key-value may specify the
+  alignment for tensor data.
+*/
+uint64_t align = 0;
+
 void *
 gguf_scan_header(void *ptr)
 {
@@ -160,13 +166,77 @@ gguf_scan_metadata_keyvalue(void *ptr)
 void *
 gguf_scan_metadata(void *ptr)
 {
+	start_metadata();
+
 	for (uint64_t i = 0; i < n_meta; i++)
 		ptr = gguf_scan_metadata_keyvalue(ptr);
+
+
+	end_metadata();
+
+	return ptr;
+}
+
+void *
+gguf_scan_one_tensor(void *ptr, void *tensor_data)
+{
+	char *name;
+	uint64_t namelen;
+	uint32_t ndims;
+	uint64_t *dims;
+	uint64_t offset;
+	uint32_t ggmltype;
+
+	ptr = gguf_scan_string(ptr, &namelen, &name);
+	ptr = gguf_scan_uint32(ptr, &ndims);
+	dims = malloc(ndims * sizeof(uint64_t));
+	if (dims == NULL) {
+		perror("malloc");
+		exit(EXIT_FAILURE);
+	}
+	for (uint32_t i = 0; i < ndims; i++)
+		ptr = gguf_scan_uint64(ptr, dims + i);
+
+	ptr = gguf_scan_uint32(ptr, &ggmltype);
+	ptr = gguf_scan_uint64(ptr, &offset);
+
+	if (tensor_data) {
+		create_tensor(name, namelen, dims, ndims, ggmltype, tensor_data + offset);
+	}
+	return ptr;
+}
+
+void *
+gguf_scan_tensors(void *ptr, void *ptr_start)
+{
+	/*
+	  We have to scan tensor twice.
+
+	  The first time to find the starting offset of tensor data,
+	  the second time to actually create tensors.
+	*/
+	void *ptr_tensor_info = ptr;
+	for (uint64_t i = 0; i < n_tens; i++) {
+		ptr = gguf_scan_one_tensor(ptr, NULL);
+	}
+	void *ptr_tensor_data = ptr + align_offset(ptr - ptr_start, align);
+
+	start_tensors();
+
+	ptr = ptr_tensor_info;
+	for (uint64_t i = 0; i < n_tens; i++) {
+		ptr = gguf_scan_one_tensor(ptr, ptr_tensor_data);
+	}
+
+	end_tensors();
+
 	return ptr;
 }
 
 int main(int argc, char *argv[])
 {
+	void *ptr_start, *ptr;
+
 	if (argc != 3) {
 		fprintf(stderr, "Usage: %s <GGUF model> <output directory>\n", argv[0]);
 		exit(EXIT_FAILURE);
@@ -194,13 +264,14 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	void *ptr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-	if (ptr == MAP_FAILED) {
+	ptr_start = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+	if (ptr_start == MAP_FAILED) {
 		perror("mmap");
 		close(fd);
 		exit(EXIT_FAILURE);
 	}
 
+	ptr = ptr_start;
 	ptr = gguf_scan_header(ptr);
 
 	if (mkdir(output_dir, 0755) != 0) {
@@ -213,7 +284,15 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	printf("Scanning metadata...");
+	fflush(stdout);
 	ptr = gguf_scan_metadata(ptr);
+	printf("done.\n");
+
+	printf("Scanning tensors...");
+	fflush(stdout);
+	ptr = gguf_scan_tensors(ptr, ptr_start);
+	printf("done.\n");
 
 	munmap(ptr, sb.st_size);
 	close(fd);
