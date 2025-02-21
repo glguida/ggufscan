@@ -18,7 +18,7 @@ uint64_t n_meta;
   TODO: 'general.alignment' in the metadata key-value may specify the
   alignment for tensor data.
 */
-uint64_t align = 0;
+uint64_t align = 32;
 
 void *
 gguf_scan_header(void *ptr)
@@ -59,7 +59,7 @@ GGUF_SCAN_FUNC(int64_t, int64);
 GGUF_SCAN_FUNC(uint64_t, uint64);
 GGUF_SCAN_FUNC(float, float32);
 GGUF_SCAN_FUNC(double, float64);
-GGUF_SCAN_FUNC(bool, bool);
+GGUF_SCAN_FUNC(uint8_t, bool);
 
 void *
 gguf_scan_string(void *ptr, uint64_t *len, char **string)
@@ -219,7 +219,7 @@ gguf_scan_tensors(void *ptr, void *ptr_start)
 	for (uint64_t i = 0; i < n_tens; i++) {
 		ptr = gguf_scan_one_tensor(ptr, NULL);
 	}
-	void *ptr_tensor_data = ptr + align_offset(ptr - ptr_start, align);
+	void *ptr_tensor_data = ptr_start + align_offset(ptr - ptr_start, align);
 
 	start_tensors();
 

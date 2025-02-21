@@ -90,7 +90,7 @@ typedef union gguf_metadata_value {
 	uint64_t uint64;
 	int64_t int64;
 	double float64;
-	bool bool_;
+        uint8_t bool_;
 	gguf_string_t string;
 	gguf_array_t array;
 } gguf_metadata_value_t;
